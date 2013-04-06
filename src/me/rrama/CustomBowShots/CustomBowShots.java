@@ -18,7 +18,9 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Egg;
 import org.bukkit.entity.EnderPearl;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.FallingBlock;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -55,7 +57,7 @@ public class CustomBowShots extends JavaPlugin implements Listener {
             if (!Lore.get(0).equals("CustomBowShots")) return;
             LivingEntity LE = event.getEntity();
             boolean infinite = IM.hasEnchant(Enchantment.ARROW_INFINITE);
-            Projectile p;
+            Entity p;
             switch (Lore.get(1)) {
                 case "Snowball":
                     if (!infinite) {
@@ -80,14 +82,29 @@ public class CustomBowShots extends JavaPlugin implements Listener {
                     p = EP;
                     break;
                     
-                case "Potion":
+                case "Entity":
+                    p = LE.getWorld().spawnEntity(LE.getEyeLocation(), EntityType.valueOf(Lore.get(2).toUpperCase()));
+                    p.setVelocity(LE.getLocation().getDirection());
+                    break;
+                    
+                case "FallingBlock":
                     String[] L2S = Lore.get(2).split(" - ");
+                    p = LE.getWorld().spawnFallingBlock(LE.getEyeLocation(), Integer.parseInt(L2S[0]), Byte.parseByte(L2S[1]));
+                    p.setVelocity(LE.getLocation().getDirection());
+                    break;
+                    
+                case "Potion":
+                    L2S = Lore.get(2).split(" - ");
                     Potion P = new Potion(PotionType.valueOf(L2S[0].toUpperCase()), Integer.valueOf(L2S[1])).splash();
                     try {
                         P.setHasExtendedDuration(L2S[3].equalsIgnoreCase("Extended"));
                     } catch (Exception ex) {}
                     ThrownPotion TP = (ThrownPotion) LE.launchProjectile(ThrownPotion.class);
-                    TP.setItem(P.toItemStack(1));
+                    ItemStack iss = P.toItemStack(1);
+                    if (!infinite) {
+                        if (!take(LE, iss)) return;
+                    }
+                    TP.setItem(iss);
                     p = TP;
                     p.setVelocity(p.getVelocity().multiply(2));
                     break;
@@ -96,7 +113,7 @@ public class CustomBowShots extends JavaPlugin implements Listener {
                     return;
                     
             }
-            int mul = IM.getEnchantLevel(Enchantment.ARROW_DAMAGE);
+            int mul = IM.getEnchantLevel(Enchantment.ARROW_DAMAGE) + 1;
             p.setVelocity(p.getVelocity().multiply(mul));
             p.setVelocity(p.getVelocity().multiply(event.getForce()));
             event.setCancelled(true);
@@ -104,9 +121,13 @@ public class CustomBowShots extends JavaPlugin implements Listener {
     }
     
     public static boolean take(LivingEntity LE, int id) {
+        return take(LE, new ItemStack(id));
+    }
+    
+    public static boolean take(LivingEntity LE, ItemStack iss) {
         if (LE instanceof HumanEntity) return true;
         HumanEntity HE = (HumanEntity) LE;
-        return HE.getInventory().removeItem(new ItemStack(id)).isEmpty();
+        return HE.getInventory().removeItem(iss).isEmpty();
     }
     
     @EventHandler(priority = EventPriority.HIGHEST)
@@ -132,6 +153,12 @@ public class CustomBowShots extends JavaPlugin implements Listener {
         ItemStack Bow = new ItemStack(261);
         ItemMeta IM = Bow.getItemMeta();
         switch (args[0]) {
+            case "en":
+                IM.setLore(Arrays.asList("CustomBowShots", "Entity", "Pig"));
+                break;
+            case "fb":
+                IM.setLore(Arrays.asList("CustomBowShots", "FallingBlock", "35 - 0"));
+                break;
             case "p":
                 IM.setLore(Arrays.asList("CustomBowShots", "Potion", "Speed - 1 - extended"));
                 break;
@@ -143,11 +170,10 @@ public class CustomBowShots extends JavaPlugin implements Listener {
         IM.addEnchant(Enchantment.ARROW_INFINITE, 1, true);
         Bow.setItemMeta(IM);
         Player P = (Player) sender;
-        if (args[1].equals("e")) {
+        if (args.length == 2) {
             Skeleton S = (Skeleton) P.getWorld().spawnEntity(P.getLocation(), EntityType.SKELETON);
-            S.setCanPickupItems(true);
             S.setCustomName(args[0]);
-            S.getEquipment().setItemInHand(Bow);
+            S.getEquipment().setItemInHand(Bow); //Does not work. They still shot normal arrows :(
         } else {
             P.getInventory().addItem(Bow);
         }
