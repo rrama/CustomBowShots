@@ -1,0 +1,9 @@
+name: CustomBowShots
+main: me.rrama.CustomBowShots.CustomBowShots
+version: 1.0
+description: Custom amunition for bows.
+author: Rrama
+commands:
+  CoolBow:
+    description: CoolBow.
+    usage: /CoolBow [Type]
